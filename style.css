@@ -1,0 +1,24 @@
+.track-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.track-item {
+    border-radius :8px; box-shadow :0 2px 4px rgba(0 ,0 ,0 ,.1); margin-bottom :20px; overflow:hidden; display:flex; align-items:center;
+}
+
+.track-image {
+width:auto;height:auto;margin-right:.5em;
+}
+
+.track-image img{
+max-width :100%;height:auto;border-radius:.5em;
+}
+
+.track-details{
+padding:.5em;width:auto;
+}
+
+.track-details h3{
+margin-top :0;margin-bottom :.25em;font-size :
+1.25em;} p{margin :.25em;font-size :.9em;color:d3d3d3;}
