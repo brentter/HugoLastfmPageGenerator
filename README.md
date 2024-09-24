@@ -27,7 +27,7 @@ A simple python script and workflow to pull the last 10 tracks scrobbled by your
 {{.Inner}}
 ```
           
-```Use it like this -  {{{< rawhtml >}} HTML GOES HERE {{{< /rawhtml >}}}```
+```Use it like this -  {{< rawhtml >}} HTML GOES HERE {{< /rawhtml >}}```
 
  - Edit generate_markdown.py to change the limit (it's currently at 10 but you can go up to 50)
  - Make sure to put in your own frontplate information here:
