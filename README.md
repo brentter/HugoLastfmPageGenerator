@@ -48,5 +48,5 @@ date: "{current_datetime}"
  - Add the code from the style.css file to your style sheet located in the assets/css/common/ folder, it might be different depending on your theme.
  - Now add/commit/push and it should automatically run the  python script. You can see if there were any errors with the workflow by clicking on actions (it'll also email you).
 
-A Full blog write-up can be found on my site at [brentter.com](https://brentter.com/blog/Add_An_Auto_Updating_Recently_Played_Music_Page_To_Hugo)
+A Full blog write-up can be found on my site at [brentter.com](https://brentter.com/blog/add_an_auto_updating_recently_played_music_page_to_hugo/)
 An example of this working in action can be found here [brentter.com/music](https://brentter.com/music)  
