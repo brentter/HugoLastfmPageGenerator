@@ -13,33 +13,132 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11.2'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-
-      - name: Run script to generate markdown file
+          pip install requests jq
+      - name: Check for new tracks on Last.fm
+        id: check_tracks
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_USERNAME: ${{ secrets.LASTFM_USERNAME }}
         run: |
-          python generate_markdown.py
+          # Load last fetched tracks from file or set default value if not exists
+          if [ -f ./lastfm_tracks.json ]; then  # Look in the current directory (root)
+            LAST_TRACKS=$(cat ./lastfm_tracks.json)
+            LAST_TIMESTAMP=$(echo "$LAST_TRACKS" | jq '.recenttracks.track[-1].date["uts"]' | tr -d '"')
+          else
+            LAST_TRACKS="{}"
+            LAST_TIMESTAMP=0 # Default value if no previous data exists.
+          fi
+
+          # Fetch recent tracks from Last.fm API and filter by timestamp.
+          RESPONSE=$(curl -s "http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${LASTFM_USERNAME}&limit=15&api_key=${LASTFM_API_KEY}&format=json")
+
+          # Print response for debugging purposes
+          echo "API Response: $RESPONSE"
+
+          # Check for valid response before processing
+          if [[ "$RESPONSE" == *"error"* ]]; then
+            echo "Error fetching data from Last.fm API."
+            exit 1  # Exit with error code.
+          fi
+
+          NEW_TRACKS=$(echo "$RESPONSE" | jq --arg LAST_TIMESTAMP "$LAST_TIMESTAMP" '.recenttracks.track | map(select(.date.uts != null and (.date.uts | tonumber > ($LAST_TIMESTAMP | tonumber))))')
+
+          echo "New Tracks Data: $NEW_TRACKS"
+
+          NEW_TRACKS_FOUND=false
+
+          if [ "$(echo "$NEW_TRACKS" | wc -l)" -gt 0 ]; then 
+            echo "New tracks found."
+            NEW_TRACKS_FOUND=true
+            
+            # Save the latest track information to a JSON file in root directory.
+            TRACK_DATA=$(echo "$RESPONSE" | jq '.recenttracks.track')
+            
+            echo "Writing new track data to lastfm_tracks.json..."
+            
+            echo "{\"recenttracks\":{\"track\":$TRACK_DATA}}" > ./lastfm_tracks.json
+            
+            if [ $? -eq 0 ]; then
+              echo "Successfully wrote to lastfm_tracks.json."
+              # Get latest timestamp from new tracks for next run comparison.
+              LATEST_TIMESTAMP=$(echo "$NEW_TRACKS" | jq '.[-1].date.uts // empty' | tr -d '"')
+              echo "Latest timestamp updated to $LATEST_TIMESTAMP."
+              
+              # Set output as environment variable
+              echo "has_new_tracks=true" >> $GITHUB_ENV
+
+              # Check for changes before committing
+              git config --global user.name "${{ github.actor }}"
+              git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+              
+              git add ./lastfm_tracks.json 
+              
+              # Only commit if there are changes in lastfm_tracks.json.
+              git diff-index --quiet HEAD || git commit -m "Update lastfm_tracks.json with new tracks"
+              
+           else 
+             echo "Failed to write to lastfm_tracks.json."
+             exit 1  # Exit with error code on failure.
+           fi
+            
+          else
+            echo "No new tracks found."
+            # Set output as environment variable
+            echo "has_new_tracks=false" >> $GITHUB_ENV
+          fi
+
+
+      # Check for changes in git files (including pushes)
+      - name: Check for new commits or changes in lastfm_tracks.json
+        id: check_git_changes
+        run: |
+          git fetch origin main 
+          
+          # Check if there are any changes between HEAD and origin/main (the last commit)
+          if ! git diff --quiet HEAD origin/main; then
+            echo "has_new_git_changes=true" >> $GITHUB_ENV
+          else
+            echo "has_new_git_changes=false" >> $GITHUB_ENV
+          fi
+                
+      # Conditional execution based on whether new tracks were found or there are new commits/pushes.
+      - name: Run script to generate markdown file
+        if: env.has_new_tracks == 'true' || env.has_new_git_changes == 'true'
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_USERNAME: ${{ secrets.LASTFM_USERNAME }}
+        run: |
+           python generate_music_markdown.py
 
       - name: Commit changes
-        run: |
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-          git add content/music.md
-          git commit -m "music.md"
+        if: env.has_new_tracks == 'true' || env.has_new_git_changes == 'true'
+        run : |
+           git config --global user.name "${{ github.actor }}"
+           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+           
+           git add content/music.md lastfm_tracks.json 
+           
+           # Only commit if there are changes in music.md or timestamps.
+           git diff-index --quiet HEAD || git commit -m "Update music.md and track list"
 
-      # Ensure changes are pushed back before deployment 
-      - name : Push changes back to repository
-        uses : ad-m/github-push-action@v0.6.0
-        with :
-          github_token : ${{ secrets.GITHUB_TOKEN }}
+      - name: Push changes back to repository
+        if: env.has_new_tracks == 'true' || env.has_new_git_changes == 'true'
+        run: |
+           git config --global user.name "${{ github.actor }}"
+           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+           # Push changes to main branch
+           git checkout main
+           git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

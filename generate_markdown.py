@@ -3,46 +3,40 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 import os
 import sys
+import json
 
-# Fetch XML data from Last.fm API using environment variables for security
-api_key = os.getenv('LASTFM_API_KEY')   #put your lastfm api key in your github secrets
-user = os.getenv('LASTFM_USERNAME')   #put your lastfm username in your github secrets
-limit = 10   #how many tracks should it grab, if left blank the default is 50
-url = f'https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user={user}&limit={limit}&api_key={api_key}'
-
+# Load track data from JSON file instead of fetching it directly from API.
 try:
-    response = requests.get(url)
-    response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
-    xml_data = response.content
+    with open("lastfm_tracks.json", "r") as f:
+         response = json.load(f)
 
-    # Parse the XML data
-    root = ET.fromstring(xml_data)
+except FileNotFoundError as e:
+    print(f"Error loading track data file {e}")
+    sys.exit(1)  # Exit the script with a non-zero status to indicate failure.
 
-except requests.exceptions.RequestException as e:
-    print(f"Error fetching data from Last.fm API: {e}")
-    sys.exit(1)  # Exit the script with a non-zero status to indicate failure
-
-# Extract track information
+# Extract track information from loaded JSON data.
 tracks = []
-for track in root.find('recenttracks').findall('track'):
-    artist = track.find('artist').text if track.find('artist') is not None else ""
-    name = track.find('name').text if track.find('name') is not None else ""
-    album = track.find('album').text if track.find('album') is not None else ""
-    url = track.find('url').text if track.find('url') is not None else ""
-    image_url = track.find("image[@size='large']").text if track.find("image[@size='large']") is not None else ""
-    date_listened_full = track.find('date').text if track.find('date') is not None else ""
+for track in response['recenttracks']['track']:
+    artist = track['artist']['#text'] if 'artist' in track else ""
+    name = track['name'] if 'name' in track else ""
+    album = track['album']['#text'] if 'album' in track else ""
+    url = track['url'] if 'url' in track else ""
 
-    # Extract only the date part (first part before comma) and ignore time part
+    # Correctly extract large image URL
+    image_url = next((img['#text'] for img in track.get('image', []) if img.get('size') == 'large'), "")
+
+    date_listened_full = track['date']['#text'] if 'date' in track else ""
+
     date_listened_date_only = date_listened_full.split(',')[0] if date_listened_full else ""
 
     tracks.append({
-        'artist': artist,
-        'name': name,
-        'album': album,
-        'url': url,
-        'image_url': image_url,
-        'date_listened': date_listened_full
-    })
+         'artist': artist,
+         'name': name,
+         'album': album,
+         'url': url,
+         'image_url': image_url,
+         'date_listened': date_listened_date_only,
+     })
 
 # Get current date and time in ISO 8601 format with timezone offset
 current_datetime = datetime.now().astimezone().isoformat()
