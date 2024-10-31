@@ -23,9 +23,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+<<<<<<< HEAD
           pip install requests jq
       - name: Check for new tracks on Last.fm
         id: check_tracks
+=======
+          pip install requests
+          
+      - name: Run script to generate markdown file
+>>>>>>> b4ea4d8ecbf4b133571dca075263a36096cc43d2
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_USERNAME: ${{ secrets.LASTFM_USERNAME }}
@@ -131,6 +137,7 @@ jobs:
            # Only commit if there are changes in music.md or timestamps.
            git diff-index --quiet HEAD || git commit -m "Update music.md and track list"
 
+<<<<<<< HEAD
       - name: Push changes back to repository
         if: env.has_new_tracks == 'true' || env.has_new_git_changes == 'true'
         run: |
@@ -142,3 +149,12 @@ jobs:
            git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+=======
+      # Ensure changes are pushed back before deployment 
+      - name : Push changes back to repository
+        uses : ad-m/github-push-action@v0.6.0
+        with :
+          github_token : ${{ secrets.GITHUB_TOKEN }}
+          branch : main
+          
+>>>>>>> b4ea4d8ecbf4b133571dca075263a36096cc43d2
