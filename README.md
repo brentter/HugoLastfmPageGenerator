@@ -49,5 +49,5 @@ date: "{current_datetime}"
  - Now add/commit/push and it should automatically run the python script. You can see if there were any errors with the workflow by clicking on actions (it'll also email you).
  - Update: Changed it so that the workflow grabs the json file from last.fm's API. It saves a copy in your blog's root folder. Now every time it is triggered it will run a check to see if new music tracks have been added to the last.fm json file, if so it will rebuild the music.md page but regardless it will then go and see if there were any changes to the rest of the filesystem. That way you can still process updates even when there's been no changes to the recently listened to music list (before it would not update the rest of the site unless there was an update to the last.fm API feed).
  
-A Full blog write-up can be found on my site at [brentter.com](https://brentter.com/blog/Add_An_Auto_Updating_Recently_Played_Music_Page_To_Hugo)
-An example of this working in action can be found here [brentter.com/music](https://brentter.com/music)  
+A Full blog write-up can be found on my site at [brentter.com](https://brentter.com/blog/add-a-spotify-recently-played-page-for-hugo/)
+An example of this working in action can be found here [brentter.com/music](https://brentter.com/music/)  
